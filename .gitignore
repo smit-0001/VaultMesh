@@ -1,0 +1,22 @@
+# C++ Build Artifacts
+build/
+*.o
+*.out
+*.exe
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# Node/React
+node_modules/
+dist/
+
+# Project Data (NEVER COMMIT ACTUAL DATA)
+storage-node/data/*
+!storage-node/data/.gitkeep
+*.log
+.DS_Store
+.env

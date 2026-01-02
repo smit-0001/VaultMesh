@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  # The Database Service
+  db:
+    image: postgres:15-alpine
+    container_name: vault_db
+    restart: always
+    environment:
+      POSTGRES_USER: vault_admin
+      POSTGRES_PASSWORD: secret_password
+      POSTGRES_DB: vaultmesh_db
+    ports:
+      - "5432:5432" # Exposed to localhost so you can inspect it with DBeaver/PgAdmin
+    volumes:
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vault-network
+
+  # Placeholder for Control Plane (We will uncomment later)
+  # control-plane:
+  #   build: ./control_panel
+  #   ...
+
+networks:
+  vault-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

@@ -1,0 +1,8 @@
+// create the table from the init.sql file
+cat db_infra/postgres/init.sql | docker exec -i vault_db psql -U vault_admin -d vaultmesh_db
+
+// check if the tables are created
+docker exec -it vault_db psql -U vault_admin -d vaultmesh_db -c "\dt"
+
+
+docker exec -it vault_db psql -U vault_admin -d vaultmesh_db -c "\d files"
