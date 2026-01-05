@@ -14,8 +14,13 @@ DB_NAME = os.getenv("POSTGRES_DB", "vaultmesh_db")
 
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
+SQLALCHEMY_DATABASE_URL = os.getenv(
+    "DATABASE_URL", 
+    "postgresql://vault_admin:vault_password@localhost/vaultmesh_db"
+)
+
 # Create Engine
-engine = create_engine(DATABASE_URL)
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 # Create Session Factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

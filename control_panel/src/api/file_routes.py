@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
 from datetime import datetime
+from uuid import UUID  # <--- NEW IMPORT
 import socket
 import struct
 import os
@@ -13,9 +14,9 @@ CMD_DOWNLOAD = 0x02
 
 router = APIRouter(prefix="/files", tags=["Files"])
 
-# Configuration (In Phase 1, we assume one local storage node)
-STORAGE_NODE_HOST = "127.0.0.1" 
-STORAGE_NODE_PORT = 9000
+# Configuration: Read from Env or default to localhost (for local testing)
+STORAGE_NODE_HOST = os.getenv("STORAGE_NODE_HOST", "127.0.0.1")
+STORAGE_NODE_PORT = int(os.getenv("STORAGE_NODE_PORT", 9000))
 
 # Protocol Constants (Must match C++ Protocol.h)
 MAGIC = 0x56        # 'V'
@@ -24,7 +25,7 @@ CMD_UPLOAD = 0x01
 
 # Response Schema (How the data looks in JSON)
 class FileResponse(BaseModel):
-    id: str
+    id: UUID
     filename: str
     size_bytes: int
     uploaded_at: datetime
@@ -46,43 +47,39 @@ def list_files(
     return files
 
 @router.post("/upload")
-async def upload_file(
+def upload_file(
     file: UploadFile = File(...), 
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(database.get_db)
 ):
     """
-    1. Authenticate User.
-    2. Stream file to C++ Storage Node via TCP.
-    3. Save Metadata to Postgres.
+    Synchronous version: Runs in a threadpool to safely handle blocking Sockets.
     """
     
     # 1. Prepare Metadata
-    file_size = 0
     filename = file.filename
     filename_bytes = filename.encode('utf-8')
     
-    # We need to know the file size beforehand for the header.
-    # Since UploadFile is a stream, we can seek to end to get size, then seek back.
+    # Get File Size (Sync way)
     file.file.seek(0, os.SEEK_END)
     file_size = file.file.tell()
-    file.file.seek(0) # Reset cursor to start
+    file.file.seek(0) 
 
     # 2. Connect to C++ Node
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.connect((STORAGE_NODE_HOST, STORAGE_NODE_PORT))
             
-            # 3. Send Header (Magic + Command + NameLen + FileSize)
-            # >BBIQ = Big Endian, UChar, UChar, UInt, ULongLong
+            # 3. Send Header
             header = struct.pack('>BBIQ', MAGIC, CMD_UPLOAD, len(filename_bytes), file_size)
             sock.sendall(header)
             
             # 4. Send Filename
             sock.sendall(filename_bytes)
             
-            # 5. Stream the File Content (Chunk by Chunk)
-            while chunk := await file.read(4096):
+            # 5. Stream the File Content
+            # We use file.file.read() because we are in a sync function now
+            while chunk := file.file.read(4096):
                 sock.sendall(chunk)
                 
     except ConnectionRefusedError:
@@ -96,14 +93,14 @@ async def upload_file(
         size_bytes=file_size,
         owner_id=current_user.id,
         storage_node_ip=f"{STORAGE_NODE_HOST}:{STORAGE_NODE_PORT}",
-        storage_path=f"./data/{filename}" # Simple mapping for Phase 1
+        storage_path=f"./data/{filename}" 
     )
     
     db.add(new_file)
     db.commit()
     db.refresh(new_file)
 
-    return {"message": "Upload successful", "file_id": new_file.id}
+    return {"message": "Upload successful", "file_id": str(new_file.id)}
 
 @router.get("/download/{file_id}")
 def download_file(

@@ -37,13 +37,8 @@ CREATE TABLE files (
     size_bytes BIGINT NOT NULL,
     owner_id UUID REFERENCES users(id) ON DELETE CASCADE,
     folder_path VARCHAR(500) DEFAULT '/', 
-    
-    -- UPDATED: Changed from 'storage_node_id' (int) to string to match Python
     storage_node_ip VARCHAR(100), 
-    
-    -- UPDATED: Renamed from 'physical_path' to 'storage_path'
     storage_path VARCHAR(500) NOT NULL, 
-    
     uploaded_at TIMESTAMP DEFAULT NOW()
 );
 

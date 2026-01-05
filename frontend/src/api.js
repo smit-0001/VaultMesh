@@ -1,12 +1,12 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000';
+// REMOVED: const API_URL = 'http://localhost:8000';
 
 const api = axios.create({
-  baseURL: API_URL,
+  // No baseURL needed; it will default to current origin (e.g. localhost:5173)
+  // and Vite will proxy it to port 8000.
 });
 
-// Interceptor: Automatically add Token to every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {

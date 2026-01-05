@@ -1,30 +1,61 @@
 version: '3.8'
 
 services:
-  # The Database Service
+  # 1. Database
   db:
-    image: postgres:15-alpine
+    image: postgres:15
     container_name: vault_db
-    restart: always
     environment:
       POSTGRES_USER: vault_admin
-      POSTGRES_PASSWORD: secret_password
+      POSTGRES_PASSWORD: vault_password
       POSTGRES_DB: vaultmesh_db
     ports:
-      - "5432:5432" # Exposed to localhost so you can inspect it with DBeaver/PgAdmin
+      - "5432:5432"
     volumes:
-      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
       - postgres_data:/var/lib/postgresql/data
+      - ./db_infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
-      - vault-network
+      - vault_net
+    # NEW: Healthcheck ensures DB is actually running before API starts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vault_admin -d vaultmesh_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  # Placeholder for Control Plane (We will uncomment later)
-  # control-plane:
-  #   build: ./control_panel
-  #   ...
+  # 2. C++ Storage Node
+  storage_node:
+    build: ./store_core
+    container_name: vault_storage
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./store_core/data:/app/data
+    networks:
+      - vault_net
 
+  # 3. Python API
+  api:
+    build: ./control_panel
+    container_name: vault_api
+    depends_on:
+      db:
+        condition: service_healthy  # <--- Waits for DB to be healthy
+      storage_node:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    environment:
+      # Pass the connection string dynamically
+      DATABASE_URL: postgresql://vault_admin:vault_password@db:5432/vaultmesh_db
+      STORAGE_NODE_HOST: storage_node
+      STORAGE_NODE_PORT: 9000
+    networks:
+      - vault_net
+
+# Define a shared bridge network
 networks:
-  vault-network:
+  vault_net:
     driver: bridge
 
 volumes:

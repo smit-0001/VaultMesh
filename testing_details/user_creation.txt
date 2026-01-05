@@ -1,0 +1,11 @@
+{
+  "email": "hacker@evil.com",
+  "password": "password123",
+  "full_name": "Evil Hacker"
+}
+
+{
+  "email": "user@smit.com",
+  "password": "pwd123",
+  "full_name": "User Smit"
+}

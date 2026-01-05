@@ -1,10 +1,10 @@
 from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 from .database import get_db, engine
 from .api import auth_routes, file_routes
 from . import models
-from fastapi.middleware.cors import CORSMiddleware
 
 # Initialize App
 app = FastAPI(title="VaultMesh Control Plane")
